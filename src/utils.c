@@ -1485,6 +1485,85 @@ void ascii_to_keyboard_port_cpc_shift(int pressrelease)
     }
 }
 
+//Poner o quitar la tecla Shift de la maquina actual, y pasar la letra
+//mayuscula a minuscula. En el puerto el caso de una letra no se
+//distingue: la letra va siempre en su celda de la matriz y el registro
+//lo marca el bit de Shift de la maquina que sea.
+void util_set_keyboard_shift_mayuscula(unsigned *tecla,int pressrelease)
+{
+    if ((*tecla)<'A' || (*tecla)>'Z') return;
+
+    if (MACHINE_IS_SPECTRUM || MACHINE_IS_ACE) {
+                            //mayus. para Spectrum
+        if (pressrelease) {
+                                puerto_65278 &=255-1;
+        }
+        else {
+            puerto_65278 |=1;
+        }
+    }
+
+    if (MACHINE_IS_Z88) {
+        //mayus. para Z88
+        //A14 (#6) | HELP   LSH     TAB     DIA     MENU    ,       ;       '
+        if (pressrelease) {
+            blink_kbd_a14 &=255-64;
+        }
+        else {
+            blink_kbd_a14 |=64;
+        }
+    }
+
+                    //mayus para MSX
+    if (MACHINE_IS_MSX) {
+        if (pressrelease) {
+            msx_keyboard_table[6] &=255-1;
+        }
+        else {
+            msx_keyboard_table[6] |=1;
+        }
+    }
+
+    if (MACHINE_IS_SVI) {
+        if (pressrelease) {
+            svi_keyboard_table[6] &=255-1;
+        }
+        else {
+            svi_keyboard_table[6] |=1;
+        }
+    }
+
+    if (MACHINE_IS_CPC) {
+        if (pressrelease) {
+            cpc_keyboard_table[2] &=255-32;
+        }
+        else {
+            cpc_keyboard_table[2] |=32;
+        }
+    }
+
+    if (MACHINE_IS_PCW) {
+        if (pressrelease) {
+            pcw_keyboard_table[2] &=255-32;
+
+        }
+        else {
+            pcw_keyboard_table[2] |=32;
+        }
+    }
+
+    if (MACHINE_IS_QL) {
+        if (pressrelease) {
+            ql_keyboard_table[7] &= (255-1);
+        }
+        else  {
+            ql_keyboard_table[7] |= 1;
+        }
+    }
+
+    *tecla=*tecla+('a'-'A');
+}
+
 //Segun tecla de entrada, genera puerto de teclado, lo pone o lo borra
 void ascii_to_keyboard_port_set_clear(unsigned tecla,int pressrelease)
 {
@@ -1492,75 +1571,7 @@ void ascii_to_keyboard_port_set_clear(unsigned tecla,int pressrelease)
     //printf ("ascii_to_keyboard_port_set_clear: tecla: %d pressrelease: %d\n",tecla,pressrelease);
 
     if (tecla>='A' && tecla<='Z') {
-        if (MACHINE_IS_SPECTRUM || MACHINE_IS_ACE) {
-                                //mayus. para Spectrum
-            if (pressrelease) {
-                                    puerto_65278 &=255-1;
-            }
-            else {
-                puerto_65278 |=1;
-            }
-        }
-
-        if (MACHINE_IS_Z88) {
-            //mayus. para Z88
-            //A14 (#6) | HELP   LSH     TAB     DIA     MENU    ,       ;       '
-            if (pressrelease) {
-                blink_kbd_a14 &=255-64;
-            }
-            else {
-                blink_kbd_a14 |=64;
-            }
-        }
-
-                            //mayus para MSX
-        if (MACHINE_IS_MSX) {
-            if (pressrelease) {
-                msx_keyboard_table[6] &=255-1;
-            }
-            else {
-                msx_keyboard_table[6] |=1;
-            }
-        }
-
-        if (MACHINE_IS_SVI) {
-            if (pressrelease) {
-                svi_keyboard_table[6] &=255-1;
-            }
-            else {
-                svi_keyboard_table[6] |=1;
-            }
-        }
-
-        if (MACHINE_IS_CPC) {
-            if (pressrelease) {
-                cpc_keyboard_table[2] &=255-32;
-            }
-            else {
-                cpc_keyboard_table[2] |=32;
-            }
-        }
-
-        if (MACHINE_IS_PCW) {
-            if (pressrelease) {
-                pcw_keyboard_table[2] &=255-32;
-
-            }
-            else {
-                pcw_keyboard_table[2] |=32;
-            }
-        }
-
-        if (MACHINE_IS_QL) {
-            if (pressrelease) {
-                ql_keyboard_table[7] &= (255-1);
-            }
-            else  {
-                ql_keyboard_table[7] |= 1;
-            }
-        }
-
-        tecla=tecla+('a'-'A');
+        util_set_keyboard_shift_mayuscula(&tecla,pressrelease);
     }
 
 
@@ -10972,23 +10983,11 @@ void util_set_reset_key_continue_after_zeng(enum util_teclas tecla,int pressrele
             default:
                 //Caso entre a-z, A-Z y 0-9
                 //Las mayusculas tambien deben llegar a la matriz: antes se
-                //descartaban aqui en silencio, y send-keys-event no hacia nada
-                //con ellas. Se hace lo mismo que en
-                //ascii_to_keyboard_port_set_clear(): marcar Shift y pasar la
-                //letra a minuscula, porque la tabla de letras solo indexa por
-                //minuscula y en el puerto ZX Spectrum el caso no se distingue.
-                if (tecla>='A' && tecla<='Z') {
-                    if (MACHINE_IS_SPECTRUM || MACHINE_IS_ACE) {
-                        if (pressrelease) {
-                            puerto_65278 &=255-1;
-                        }
-                        else {
-                            puerto_65278 |=1;
-                        }
-                    }
-
-                    tecla=tecla+('a'-'A');
-                }
+                //descartaban aqui en silencio y send-keys-event no hacia nada
+                //con ellas. El Shift y el paso a minuscula los pone el mismo
+                //helper que usa ascii_to_keyboard_port_set_clear(), porque la
+                //tabla de letras solo indexa por minuscula.
+                util_set_keyboard_shift_mayuscula(&tecla,pressrelease);
 
                 if (
                         (tecla>='a' && tecla<='z') ||
