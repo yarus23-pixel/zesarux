@@ -10970,8 +10970,27 @@ void util_set_reset_key_continue_after_zeng(enum util_teclas tecla,int pressrele
 
 
             default:
-                //Caso entre a-z y 0-9
-            if (
+                //Caso entre a-z, A-Z y 0-9
+                //Las mayusculas tambien deben llegar a la matriz: antes se
+                //descartaban aqui en silencio, y send-keys-event no hacia nada
+                //con ellas. Se hace lo mismo que en
+                //ascii_to_keyboard_port_set_clear(): marcar Shift y pasar la
+                //letra a minuscula, porque la tabla de letras solo indexa por
+                //minuscula y en el puerto ZX Spectrum el caso no se distingue.
+                if (tecla>='A' && tecla<='Z') {
+                    if (MACHINE_IS_SPECTRUM || MACHINE_IS_ACE) {
+                        if (pressrelease) {
+                            puerto_65278 &=255-1;
+                        }
+                        else {
+                            puerto_65278 |=1;
+                        }
+                    }
+
+                    tecla=tecla+('a'-'A');
+                }
+
+                if (
                         (tecla>='a' && tecla<='z') ||
                         (tecla>='0' && tecla<='9')
             )
